@@ -2,7 +2,6 @@
 
  This plugin helps automatic signing by loading signing credentials and setting it for android project gradle configurations.
  It provides two gradle tasks for loading and setting project's "android.signingConfigs":
-
      1 - gradle task 'set-sign-config-env'
           This task reads the four environment variables :
               - SIGNING_KEY_PASSWORD
@@ -16,7 +15,6 @@
                 keyStorePath = '[path]'
            }
           in the gradle script.
-
      2 - gradle task 'set-sign-config-prop'
           This task reads credentials from this file : '[User home]/.gradle/signing_config.properties'
           The file should contain following keys :
