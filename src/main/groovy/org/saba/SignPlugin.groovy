@@ -5,19 +5,44 @@ import org.gradle.api.Project
 
 import java.nio.file.Paths
 
+
+/**
+ * This plugin helps automatic signing by loading signing credentials and setting it for android project gradle configurations.
+ * It provides two gradle tasks for loading and setting project's "android.signingConfigs":
+ *
+ *     1 - gradle task 'set-sign-config-env'
+ *          This task reads the four environment variables :
+ *              - SIGNING_KEY_PASSWORD
+ *              - SIGNING_STORE_PASSWORD
+ *              - SIGNING_KEY_ALIAS
+ *              - SIGNING_KEY_ALIAS_LEGACY
+ *          and loads keystore files from the path provided in variable: $keyStorePath
+ *          from project config 'sign-info'.
+ *          When applying the plugin, you can set the configuration for keystore path by adding:
+ *          sign_info {
+ *                keyStorePath = '[path]'
+ *           }
+ *          in the gradle script.
+ *
+ *     2 - gradle task 'set-sign-config-prop'
+ *          This task reads credentials from this file : '[User home]/.gradle/signing_config.properties'
+ *          The file should contain following keys :
+ *                   'LEGACY_RELEASE_STORE_FILE','RELEASE_STORE_FILE','RELEASE_STORE_PASSWORD',
+ *                   'LEGACY_RELEASE_KEY_ALIAS','RELEASE_KEY_ALIAS','RELEASE_KEY_PASSWORD'
+ *          The first two parameters are the path for keystore files.
+ * */
 class SignPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
         def extension = project.extensions.create('sign_info', SignPluginExtension)
         project.tasks.create('set-sign-config-env') {
             doLast {
-                println "KeyStore path--->" + "${extension.path} "
-                setSignConfigEnv(extension.path, project)
+                println "KeyStore path--->" + "${extension.keyStorePath} "
+                setSignConfigEnv(extension.keyStorePath, project)
             }
         }
         project.tasks.create('set-sign-config-prop') {
             doLast {
-                println "KeyStore path--->" + "${extension.path} "
                 setSignConfigProp( project)
             }
         }
@@ -31,8 +56,13 @@ class SignPlugin implements Plugin<Project> {
         println 'propFile' + propFile
         if (propFile.canRead()) {
             props.load(new FileInputStream(propFile))
-            if (props != null && props.containsKey('LEGACY_RELEASE_STORE_FILE') && props.containsKey('RELEASE_STORE_FILE')
-                    && props.containsKey('RELEASE_STORE_PASSWORD') && props.containsKey('LEGACY_RELEASE_KEY_ALIAS') && props.containsKey('RELEASE_KEY_ALIAS') && props.containsKey('RELEASE_KEY_PASSWORD')) {
+            if (props != null &&
+                    props.containsKey('LEGACY_RELEASE_STORE_FILE') &&
+                    props.containsKey('RELEASE_STORE_FILE') &&
+                    props.containsKey('RELEASE_STORE_PASSWORD') &&
+                    props.containsKey('LEGACY_RELEASE_KEY_ALIAS') &&
+                    props.containsKey('RELEASE_KEY_ALIAS') &&
+                    props.containsKey('RELEASE_KEY_PASSWORD')) {
                 def releaseStoreFile = project.file(props['RELEASE_STORE_FILE'])
                 def releaseLegacyStoreFile = project.file(props['LEGACY_RELEASE_STORE_FILE'])
                 println 'releaseStoreFile:' + releaseStoreFile + ' releaseLegacyStoreFile:' + releaseLegacyStoreFile
@@ -60,10 +90,9 @@ class SignPlugin implements Plugin<Project> {
             println 'keystore path can not be null'
             return
         }
-       
+
         def keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
         def storePassword = System.getenv("SIGNING_STORE_PASSWORD")
-
         def keyAlias = System.getenv("SIGNING_KEY_ALIAS")
         def keyAliasLegacy = System.getenv("SIGNING_KEY_ALIAS_LEGACY")
 
@@ -118,6 +147,6 @@ class SignPlugin implements Plugin<Project> {
 }
 
 class SignPluginExtension {
-    def path = ""
+    def keyStorePath = ""
 }
 
