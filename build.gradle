@@ -1,0 +1,44 @@
+plugins {
+    id 'groovy'
+    id 'java-gradle-plugin'
+    id 'maven-publish'
+}
+sourceCompatibility = 1.8
+group 'org.saba'
+version '1.0'
+
+repositories {
+    mavenCentral()
+}
+
+gradlePlugin {
+    plugins {
+        signPlugin {
+            id = 'org.saba.sign'
+            implementationClass = 'org.saba.SignPlugin'
+        }
+    }
+}
+
+dependencies {
+    implementation 'org.codehaus.groovy:groovy-all:3.0.5'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+    implementation gradleApi()
+    implementation localGroovy()
+}
+
+publishing {
+    repositories {
+        mavenLocal()
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+configurations.all {
+    resolutionStrategy {
+        force 'org.codehaus.groovy:groovy-all:3.0.7'
+    }
+}
