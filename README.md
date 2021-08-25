@@ -31,4 +31,34 @@
                  'LEGACY_RELEASE_KEY_ALIAS','RELEASE_KEY_ALIAS','RELEASE_KEY_PASSWORD'
        
        The first two parameters are the path for keystore files.
+       
+# Usage in android project : 
 
+  - Add plugin jar file to /libraries folder
+  - Add this:
+        
+        flatDir dirs: 'libraries'
+        
+    to project level build.gradle , 'buildscript>repositories' section 
+  - Add this:
+        
+        classpath group: 'org.saba', name: 'SignPlugin', version: '1.0'
+        
+     to project level build.gradle , 'buildscript>dependencies' section 
+  
+  - Add  to module level build.gradle :
+       
+        apply plugin: 'org.saba.sign'
+  
+    If you want to use 'set-sign-config-env', Add this too:
+  
+        sign_info {
+          keyStorePath = '/tmp/' //replace this with your keystore path
+        }
+  
+ - Now you can run any of the two tasks :
+       
+       gradlew set-sign-config-env
+       gradlew set-sign-config-prop
+       
+       
