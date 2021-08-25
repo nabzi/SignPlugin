@@ -20,8 +20,8 @@ import java.nio.file.Paths
  *          from project config 'sign-info'.
  *          When applying the plugin, you can set the configuration for keystore path by adding:
  *          sign_info {
- *                keyStorePath = '[path]'
- *           }
+ *                 keyStorePath = '[path]'
+ *          }
  *          in the gradle script.
  *
  *     2 - gradle task 'set-sign-config-prop'
@@ -30,6 +30,10 @@ import java.nio.file.Paths
  *                   'LEGACY_RELEASE_STORE_FILE','RELEASE_STORE_FILE','RELEASE_STORE_PASSWORD',
  *                   'LEGACY_RELEASE_KEY_ALIAS','RELEASE_KEY_ALIAS','RELEASE_KEY_PASSWORD'
  *          The first two parameters are the path for keystore files.
+ *
+ *     For signing legacy release, add :
+ *          releaseLegacy = true
+ *     to  sign_info {} block
  * */
 class SignPlugin implements Plugin<Project> {
     @Override
@@ -37,51 +41,63 @@ class SignPlugin implements Plugin<Project> {
         def extension = project.extensions.create('sign_info', SignPluginExtension)
         project.tasks.create('set-sign-config-env') {
             doLast {
-                println "KeyStore path--->" + "${extension.keyStorePath} "
-                setSignConfigEnv(extension.keyStorePath, project)
+                println "KeyStore path--->  ${extension.keyStorePath}  'has release legacy--->'  ${extension.releaseLegacy} "
+                setSignConfigEnv(extension.keyStorePath, extension.releaseLegacy, project)
             }
         }
         project.tasks.create('set-sign-config-prop') {
             doLast {
-                setSignConfigProp( project)
+                setSignConfigProp(extension.releaseLegacy,project)
             }
         }
     }
 
-    void setSignConfigProp(Project project) {
+    void setSignConfigProp(Boolean releaseLegacy, Project project) {
         Properties props = new Properties()
         def userHome = Paths.get(System.getProperty('user.home'))
         println 'userHome:' + userHome
         def propFile = project.file(userHome.resolve('.gradle/signing_config.properties'))
         println 'propFile' + propFile
-        if (propFile.canRead()) {
-            props.load(new FileInputStream(propFile))
-            if (props != null &&
-                    props.containsKey('LEGACY_RELEASE_STORE_FILE') &&
-                    props.containsKey('RELEASE_STORE_FILE') &&
-                    props.containsKey('RELEASE_STORE_PASSWORD') &&
-                    props.containsKey('LEGACY_RELEASE_KEY_ALIAS') &&
-                    props.containsKey('RELEASE_KEY_ALIAS') &&
-                    props.containsKey('RELEASE_KEY_PASSWORD')) {
-                def releaseStoreFile = project.file(props['RELEASE_STORE_FILE'])
-                def releaseLegacyStoreFile = project.file(props['LEGACY_RELEASE_STORE_FILE'])
-                println 'releaseStoreFile:' + releaseStoreFile + ' releaseLegacyStoreFile:' + releaseLegacyStoreFile
-                addSignCredentials(project,
-                        releaseStoreFile,
-                        releaseLegacyStoreFile,
-                        props['RELEASE_STORE_PASSWORD'] as String,
-                        props['RELEASE_KEY_PASSWORD'] as String,
-                        props['RELEASE_KEY_ALIAS'] as String,
-                        props['LEGACY_RELEASE_KEY_ALIAS'] as String)
-                return
-            } else {
-                println 'signing.properties found but some entries are missing'
-                project.android.buildTypes.release.signingConfig = null
+        if (!propFile.canRead()) {
+            println 'Can not read signing.properties file'
+            project.android.buildTypes.release.signingConfig = null
+        }
+        props.load(new FileInputStream(propFile))
+        if (props != null &&
+                props.containsKey('RELEASE_STORE_FILE') &&
+                props.containsKey('RELEASE_STORE_PASSWORD') &&
+                props.containsKey('RELEASE_KEY_ALIAS') &&
+                props.containsKey('RELEASE_KEY_PASSWORD')) {
+            def releaseStoreFile = project.file(props['RELEASE_STORE_FILE'])
+            def releaseLegacyStoreFile = null
+            def legacyKeyAlias = ""
+            if (releaseLegacy) {
+                if (!props.containsKey('LEGACY_RELEASE_KEY_ALIAS') ||
+                        !props.containsKey('LEGACY_RELEASE_STORE_FILE')) {
+                    println 'signing.properties found but some entries are missing'
+                    project.android.buildTypes.release.signingConfig = null
+                    return
+                }
+                releaseLegacyStoreFile = project.file(props['LEGACY_RELEASE_STORE_FILE'])
+                legacyKeyAlias = props['LEGACY_RELEASE_KEY_ALIAS'] as String
             }
+            println 'releaseStoreFile:' + releaseStoreFile + ' releaseLegacyStoreFile:' + releaseLegacyStoreFile
+            addSignCredentials(project,
+                    releaseStoreFile,
+                    releaseLegacyStoreFile,
+                    props['RELEASE_STORE_PASSWORD'] as String,
+                    props['RELEASE_KEY_PASSWORD'] as String,
+                    props['RELEASE_KEY_ALIAS'] as String,
+                    legacyKeyAlias,
+                    releaseLegacy
+            )
+        } else {
+            println 'signing.properties found but some entries are missing'
+            project.android.buildTypes.release.signingConfig = null
         }
     }
 
-    void setSignConfigEnv(String keyStorePath, Project project) {
+    void setSignConfigEnv(String keyStorePath, Boolean releaseLegacy, Project project) {
         /*
         * Automates generation of Release APK
         * ./gradlew assembleRelease
@@ -101,7 +117,7 @@ class SignPlugin implements Plugin<Project> {
         println 'keyAlias' + keyAlias
         println 'keyAliasLegacy' + keyAliasLegacy
 
-        if (keyPassword == null || storePassword == null || keyAlias == null || keyAliasLegacy == null) {
+        if (keyPassword == null || storePassword == null || keyAlias == null || (releaseLegacy && keyAliasLegacy == null)) {
             println 'signing credentials not found in environment variables'
             project.android.buildTypes.release.signingConfig = null
             return
@@ -122,31 +138,37 @@ class SignPlugin implements Plugin<Project> {
                 storePassword,
                 keyPassword,
                 keyAlias,
-                keyAliasLegacy
+                keyAliasLegacy,
+                releaseLegacy
         )
     }
+
     def addSignCredentials(Project project,
-                           File releaseKey,
-                           File legacyReleaseKey,
-                           String storePassword,
-                           String keyPassword,
-                           String keyAlias,
-                           String keyAliasLegacy) {
+                                  File releaseKey,
+                                  File legacyReleaseKey,
+                                  String storePassword,
+                                  String keyPassword,
+                                  String keyAlias,
+                                  String keyAliasLegacy,
+                                  Boolean releaseLegacy
+    ) {
         project.android.signingConfigs.release.storeFile = releaseKey
         project.android.signingConfigs.release.storePassword = storePassword
         project.android.signingConfigs.release.keyAlias = keyAlias
         project.android.signingConfigs.release.keyPassword = keyPassword
-
-        project.android.signingConfigs.releaseLegacy.storeFile = legacyReleaseKey
-        project.android.signingConfigs.releaseLegacy.storePassword = storePassword
-        project.android.signingConfigs.releaseLegacy.keyAlias = keyAliasLegacy
-        project.android.signingConfigs.releaseLegacy.keyPassword = keyPassword
-
+        if (releaseLegacy) {
+            project.android.signingConfigs.releaseLegacy.storeFile = legacyReleaseKey
+            project.android.signingConfigs.releaseLegacy.storePassword = storePassword
+            project.android.signingConfigs.releaseLegacy.keyAlias = keyAliasLegacy
+            project.android.signingConfigs.releaseLegacy.keyPassword = keyPassword
+        }
         println(" set signing config successfully")
     }
+
 }
 
 class SignPluginExtension {
     def keyStorePath = ""
+    def releaseLegacy = false
 }
 
