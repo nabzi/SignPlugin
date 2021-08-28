@@ -18,10 +18,8 @@ import java.nio.file.Paths
  *          and loads keystore files from the path provided in variable: $keyStorePath
  *          from project config 'sign-info'.
  *          When applying the plugin, you can set the configuration for keystore path by adding:
- *          sign_info {
- *                 keyStorePath = '[path]'
- *          }
- *          in the gradle script.
+ *          sign_info {*                 keyStorePath = '[path]'
+ *}*          in the gradle script.
  *
  *     2 - gradle task 'set-sign-config-prop'
  *          This task reads credentials from this file : '[User home]/.gradle/signing_config.properties'
@@ -39,18 +37,20 @@ class SignPlugin implements Plugin<Project> {
     void apply(Project project) {
         def extension = project.extensions.create('sign_info', SignPluginExtension)
         def setSignConfigEnvTask = project.tasks.create('set-sign-config-env') {
-            doLast {
+            doFirst {
                 println "KeyStore path--->  ${extension.keyStorePath}  'has release legacy--->'  ${extension.releaseLegacy} "
                 setSignConfigEnv(extension.keyStorePath, extension.releaseLegacy, project)
             }
         }
         def setSignConfigPropTask = project.tasks.create('set-sign-config-prop') {
-            doLast {
-                setSignConfigProp(extension.releaseLegacy,project)
+            doFirst {
+                setSignConfigProp(extension.releaseLegacy, project)
             }
         }
+
+        println("adding task dependencies..............")
         project.android.applicationVariants.all { variant ->
-            if ( variant.buildType.name == "release") {
+            if (variant.buildType.name == "release") {
                 if (extension.env) {
                     if (variant.hasProperty("preBuildProvider")) {
                         variant.preBuildProvider.configure { dependsOn(setSignConfigEnvTask) }
@@ -162,13 +162,13 @@ class SignPlugin implements Plugin<Project> {
     }
 
     def addSignCredentials(Project project,
-                                  File releaseKey,
-                                  File legacyReleaseKey,
-                                  String storePassword,
-                                  String keyPassword,
-                                  String keyAlias,
-                                  String keyAliasLegacy,
-                                  Boolean releaseLegacy
+                           File releaseKey,
+                           File legacyReleaseKey,
+                           String storePassword,
+                           String keyPassword,
+                           String keyAlias,
+                           String keyAliasLegacy,
+                           Boolean releaseLegacy
     ) {
         project.android.signingConfigs.release.storeFile = releaseKey
         project.android.signingConfigs.release.storePassword = storePassword
