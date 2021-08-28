@@ -2,7 +2,6 @@ package org.saba
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-
 import java.nio.file.Paths
 
 
@@ -39,17 +38,36 @@ class SignPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
         def extension = project.extensions.create('sign_info', SignPluginExtension)
-        project.tasks.create('set-sign-config-env') {
+        def setSignConfigEnvTask = project.tasks.create('set-sign-config-env') {
             doLast {
                 println "KeyStore path--->  ${extension.keyStorePath}  'has release legacy--->'  ${extension.releaseLegacy} "
                 setSignConfigEnv(extension.keyStorePath, extension.releaseLegacy, project)
             }
         }
-        project.tasks.create('set-sign-config-prop') {
+        def setSignConfigPropTask = project.tasks.create('set-sign-config-prop') {
             doLast {
                 setSignConfigProp(extension.releaseLegacy,project)
             }
         }
+        project.android.applicationVariants.all { variant ->
+            if ( variant.buildType.name == "release") {
+                if (extension.env) {
+                    if (variant.hasProperty("preBuildProvider")) {
+                        variant.preBuildProvider.configure { dependsOn(setSignConfigEnvTask) }
+                    } else {
+                        variant.preBuild.dependsOn(setSignConfigEnvTask)
+                    }
+                }
+                if (extension.prop) {
+                    if (variant.hasProperty("preBuildProvider")) {
+                        variant.preBuildProvider.configure { dependsOn(setSignConfigPropTask) }
+                    } else {
+                        variant.preBuild.dependsOn(setSignConfigPropTask)
+                    }
+                }
+            }
+        }
+
     }
 
     void setSignConfigProp(Boolean releaseLegacy, Project project) {
@@ -168,6 +186,8 @@ class SignPlugin implements Plugin<Project> {
 }
 
 class SignPluginExtension {
+    def prop = false
+    def env = true
     def keyStorePath = ""
     def releaseLegacy = false
 }
