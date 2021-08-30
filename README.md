@@ -1,12 +1,14 @@
 # SignPlugin
 
  This plugin helps automatic signing by loading signing credentials and setting it for android project gradle configurations.
- It provides two gradle tasks for loading and setting project's "android.signingConfigs":
- 
-   **1 - gradle task 'set-sign-config-env'**
+ It provides a gradle task for loading and setting project's "android.signingConfigs":
+ **gradle task 'set-sign-config'**
+    This tasks works in two modes : 
+    
+**1 - available keyStore path** 
 
-   This task reads the four environment variables :
-   
+If keystore path parameter is available in variable: $keyStorePath
+from project config 'sign-info', it reads the four environment variables : 
     
         - SIGNING_KEY_PASSWORD
         - SIGNING_STORE_PASSWORD
@@ -14,13 +16,12 @@
         - SIGNING_KEY_ALIAS_LEGACY
     
     
-and loads keystore files from the path provided in variable: $keyStorePath
-from project config 'sign-info'.
+and loads keystore files from the path provided .
 
 
-   **2 - gradle task 'set-sign-config-prop'**
+   **2 - unavailable keyStore path**
    
-This task reads credentials from properties file located in the following path:
+If no keyStorePath value is set, it reads credentials from properties file located in the following path:
  
 _'[User home]/.gradle/signing_config.properties'`_
 
@@ -46,11 +47,8 @@ Parameter values should be provided in 'sign_info' block
         sign_info {
             keyStorePath = '/tmp/'
             releaseLegacy = true
-            env = true
         }
-- keyStorePath <String> : Keystore path used when signing in 'env = true' mode
-- env          <Boolen> : Sign using credentials provided in environment variables.[Default value = true]
-- prop         <Boolen> : Sign using credentials provided in properties file [Default value = false]
+- keyStorePath <String> : Keystore path used when signing using credentials from environment variables
 - releaseLegacy<Boolen> : Also sign in legacy mode [Default value = false]
 
 
@@ -76,12 +74,6 @@ Parameter values should be provided in 'sign_info' block
   
    
   
-  - Now you can test it by running any of the two tasks :
-       
-        gradlew set-sign-config-env
-        gradlew set-sign-config-prop
-       
-  - The tasks are added to all module 'release' build variants when applying the plugin
-   
+  - The task is executed after project configuration phase (afterEvaluate phase)
 
   
