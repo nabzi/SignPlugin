@@ -2,6 +2,8 @@ package org.saba
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.provider.Property
+
 import java.nio.file.Paths
 
 
@@ -36,38 +38,18 @@ class SignPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
         def extension = project.extensions.create('sign_info', SignPluginExtension)
-        def setSignConfigEnvTask = project.tasks.create('set-sign-config-env') {
-            doFirst {
-                println "KeyStore path--->  ${extension.keyStorePath}  'has release legacy--->'  ${extension.releaseLegacy} "
-                setSignConfigEnv(extension.keyStorePath, extension.releaseLegacy, project)
-            }
-        }
-        def setSignConfigPropTask = project.tasks.create('set-sign-config-prop') {
-            doFirst {
-                setSignConfigProp(extension.releaseLegacy, project)
-            }
-        }
-
-        println("adding task dependencies..............")
-        project.android.applicationVariants.all { variant ->
-            if (variant.buildType.name == "release") {
-                if (extension.env) {
-                    if (variant.hasProperty("preBuildProvider")) {
-                        variant.preBuildProvider.configure { dependsOn(setSignConfigEnvTask) }
-                    } else {
-                        variant.preBuild.dependsOn(setSignConfigEnvTask)
-                    }
-                }
-                if (extension.prop) {
-                    if (variant.hasProperty("preBuildProvider")) {
-                        variant.preBuildProvider.configure { dependsOn(setSignConfigPropTask) }
-                    } else {
-                        variant.preBuild.dependsOn(setSignConfigPropTask)
-                    }
+        def setSignConfigEnvTask = project.tasks.create('set-sign-config') {
+            project.afterEvaluate {
+                println "SignPlugin ***** KeyStore path--->  ${extension.keyStorePath.get()}  'has release legacy--->'  ${extension.releaseLegacy.get()} "
+                if(extension.keyStorePath.get() == "") {
+                    println "SignPlugin ***** signing by credentials from properties file"
+                    setSignConfigProp(extension.releaseLegacy.get(), project)
+                }else {
+                    println "SignPlugin ***** signing by credentials from environment variables"
+                    setSignConfigEnv(extension.keyStorePath.get(), extension.releaseLegacy.get(), project)
                 }
             }
         }
-
     }
 
     void setSignConfigProp(Boolean releaseLegacy, Project project) {
@@ -185,10 +167,13 @@ class SignPlugin implements Plugin<Project> {
 
 }
 
-class SignPluginExtension {
-    def prop = false
-    def env = true
-    def keyStorePath = ""
-    def releaseLegacy = false
+abstract class SignPluginExtension {
+    abstract Property<String> getKeyStorePath()
+    abstract Property<Boolean> getReleaseLegacy()
+
+    SignPluginExtension() {
+        keyStorePath.convention("")
+        releaseLegacy.convention(false)
+    }
 }
 
