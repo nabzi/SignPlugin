@@ -44,7 +44,7 @@ Parameter values should be provided in 'sign_info' block
 
     [ in module build.gradle ]
         apply plugin: 'org.saba.sign'
-        sign_info {
+        signInfo {
             keyStorePath = '/tmp/'
             releaseLegacy = true
         }

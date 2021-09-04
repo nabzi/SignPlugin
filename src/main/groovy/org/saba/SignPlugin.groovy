@@ -20,7 +20,7 @@ import java.nio.file.Paths
  *          and loads keystore files from the path provided in variable: $keyStorePath
  *          from project config 'sign-info'.
  *          When applying the plugin, you can set the configuration for keystore path by adding:
- *          sign_info {*                 keyStorePath = '[path]'
+ *          signInfo {*                 keyStorePath = '[path]'
  *}*          in the gradle script.
  *
  *     2 - gradle task 'set-sign-config-prop'
@@ -32,12 +32,12 @@ import java.nio.file.Paths
  *
  *     For signing legacy release, add :
  *          releaseLegacy = true
- *     to  sign_info {} block
+ *     to  signInfo {} block
  * */
 class SignPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
-        def extension = project.extensions.create('sign_info', SignPluginExtension)
+        def extension = project.extensions.create('signingSettings', SignPluginExtension)
         def setSignConfigEnvTask = project.tasks.create('set-sign-config') {
             project.afterEvaluate {
                 println "SignPlugin ***** KeyStore path--->  ${extension.keyStorePath.get()}  'has release legacy--->'  ${extension.releaseLegacy.get()} "
