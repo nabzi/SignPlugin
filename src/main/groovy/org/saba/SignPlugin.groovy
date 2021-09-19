@@ -38,7 +38,7 @@ class SignPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
         def extension = project.extensions.create('signInfo', SignPluginExtension)
-        if (getCurrentBuildType( project) == "Debug")
+        if (getCurrentBuildType( project) != "Release")
             return
         def setSignConfigEnvTask = project.tasks.create('set-sign-config') {
             project.afterEvaluate {
