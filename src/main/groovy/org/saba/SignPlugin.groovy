@@ -37,7 +37,9 @@ import java.nio.file.Paths
 class SignPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
-        def extension = project.extensions.create('signingSettings', SignPluginExtension)
+        def extension = project.extensions.create('signInfo', SignPluginExtension)
+        if (getCurrentBuildType( project) == "Debug")
+            return
         def setSignConfigEnvTask = project.tasks.create('set-sign-config') {
             project.afterEvaluate {
                 println "SignPlugin ***** KeyStore path--->  ${extension.keyStorePath.get()}  'has release legacy--->'  ${extension.releaseLegacy.get()} "
@@ -51,13 +53,23 @@ class SignPlugin implements Plugin<Project> {
             }
         }
     }
-
+    String getCurrentBuildType (Project project){
+        def isDebug = project.gradle.startParameter.taskRequests.any {
+            it.args.any { it.endsWith("Debug") } }
+       // println "build type isDebug ?  " + isDebug
+        return isDebug ? "Debug" : "Release"
+    }
     void setSignConfigProp(Boolean releaseLegacy, Project project) {
         Properties props = new Properties()
-        def userHome = Paths.get(System.getProperty('user.home'))
-        println 'userHome:' + userHome
-        def propFile = project.file(userHome.resolve('.gradle/signing_config.properties'))
-        println 'propFile' + propFile
+        //def userHome = Paths.get(System.getProperty('user.home'))
+        //println 'userHome:' + userHome
+        //def propFile = project.file(userHome.resolve('.gradle/signing_config.properties'))
+        //def propFile = project.file(userHome.resolve('.gradle/signing_config.properties'))
+        def propPath = System.getenv("PROP_PATH")
+        def userHome = Paths.get(propPath)
+        println 'propPath>>>:' + userHome
+        def propFile = project.file(userHome.resolve('signing_config.properties'))
+        println 'propFile>>>' + propFile
         if (!propFile.canRead()) {
             println 'Can not read signing.properties file'
             project.android.buildTypes.release.signingConfig = null
